@@ -1,0 +1,32 @@
+
+
+.NoteNode {
+  width: 100%;
+  &-block {
+    height: 28px;
+    line-height: 28px;
+    display: flex;
+    align-items: center;
+  }
+  &-icon {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &::before {
+      content: "";
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #000;
+    }
+  }
+  &-content {
+    flex: 1;
+    > div {
+      outline: none;
+    }
+  }
+}

@@ -1,0 +1,13 @@
+.floating-toolbar {
+  button {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #f2f2f2;
+      border-radius: 4px;
+    }
+  }
+}
