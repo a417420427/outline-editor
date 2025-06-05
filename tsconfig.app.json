@@ -23,7 +23,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
      "paths": {
-    "@constants/*": ["constants/*"]
+    "@constants/*": ["constants/*"],
+    "@": ["src"],
   }
   },
   "include": ["src"]

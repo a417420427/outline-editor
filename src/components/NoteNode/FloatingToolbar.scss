@@ -10,4 +10,24 @@
       border-radius: 4px;
     }
   }
+  .external-field {
+    position: absolute;
+    top: -30px;
+    left: 40px;
+  }
+  .color-picker {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 10px;
+    .color-item {
+      width: 20px;
+      height: 20px;
+      margin: 0 2px;
+      border-radius: 50%;
+      &:hover {
+        transform: scale(1.2);
+      }
+    }
+  }
 }

@@ -17,8 +17,11 @@ declare global {
     focuseId: string;
     onAddNode: (node:OutlineNode) => void;
     onTabNode: (node:OutlineNode, selection?: string) => void;
+    onFocuse: (node:OutlineNode) => void;
+    onDeleteNode: (node:OutlineNode) => void;
   }
 
-  type FormatType = "strong" | "em" | "code" | "link";
+  type FormatType = "strong" | "em" | "code" | "link" | 'color'
 
+  type ActionType = "delete" | "mark" | "import" | 'export';
 }

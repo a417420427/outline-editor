@@ -8,7 +8,7 @@ const nodes: OutlineNode[] = [
     id: Math.random().toFixed(10),
     content: {
       type: "paragraph",
-      content: [{ type: "text", text: "Hello from OutlineNode" }],
+      content: [{ type: "text", text: "大纲笔记功能" }],
     },
     children: [],
   },
@@ -115,21 +115,37 @@ function App() {
     setBaseNodes(newNodes.filter((f) => f.id !== node.id));
   };
 
+  const onDeleteNode = (node: OutlineNode) => {
+    let newNodes = structuredClone(baseNodes);
+    const currentParent = findNodeById(newNodes, node.parentId || "");
+    if (currentParent) {
+      currentParent.children = currentParent.children.filter(
+        (child) => child.id !== node.id
+      );
+    } else {
+      newNodes = newNodes.filter((f) => f.id !== node.id);
+    }
+
+    setBaseNodes(newNodes);
+  }
+
   return (
     <div
       style={{
         width: 600,
-        padding: 20,
+        padding: '100px 100px 0',
         height: 600,
       }}
     >
       {baseNodes.map((node) => (
         <NoteNode
+          onDeleteNode={onDeleteNode}
           onTabNode={onTabNode}
           focuseId={focuseId}
           key={node.id}
           node={node}
           onAddNode={onAddNode}
+          onFocuse={(node: OutlineNode) => setFocuseId(node.id)}
         ></NoteNode>
       ))}
     </div>

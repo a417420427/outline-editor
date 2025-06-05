@@ -1,5 +1,3 @@
-
-
 .NoteNode {
   width: 100%;
   &-block {
@@ -29,4 +27,20 @@
       outline: none;
     }
   }
+  &-replace {
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  &-replace {
+    position: relative;
+  }
+}
+
+.NodeActionsBar {
+  position: absolute;
+  top: 0;
+  left: -60px;
+  width: 100px;
 }
