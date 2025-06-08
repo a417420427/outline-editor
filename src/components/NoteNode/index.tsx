@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { EditorState, TextSelection } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
-import { schema } from "prosemirror-schema-basic";
 
 import { history } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 import { baseKeymap, toggleMark } from "prosemirror-commands";
 
-import { Node as PMNode } from "prosemirror-model";
+import { DOMSerializer, Node as PMNode } from "prosemirror-model";
 import FloatingToolbar from "./FloatingToolbar";
 import "prosemirror-view/style/prosemirror.css";
 import "./index.scss";
@@ -15,30 +14,69 @@ import { List } from "lucide-react";
 import NodeActionsBar from "./NodeActionsBar";
 import { extendedSchema } from "../../schema/extendedSchema";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderContentToHTML(content: any): string {
+  const node = PMNode.fromJSON(extendedSchema, content);
+  const fragment = DOMSerializer.fromSchema(extendedSchema).serializeFragment(
+    node.content
+  );
+
+  const div = document.createElement("div");
+  div.appendChild(fragment);
+
+  return div.innerHTML;
+}
+
+
 function NoteNode(props: NoteNodeProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const lastClickPos = useRef<{ node: Node; offset: number } | null>(null);
+
   const editView = useRef<EditorView | null>(null);
   const [selectionCoords, setSelectionCoords] = useState<{
     top: number;
     left: number;
   } | null>(null);
   const [actionVisible, setActionVisible] = useState(false);
-  useEffect(() => {
-    if (!editView.current) {
+
+  const onNodeFocuse = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      lastClickPos.current = {
+        node: range.startContainer,
+        offset: range.startOffset,
+      };
+    }
+    console.log(lastClickPos.current, selection)
+    props.onFocuse(props.node, editView.current!, lastClickPos.current?.offset);
+  };
+  const destroyEditor = () => {
+    if (editView.current) {
+      editView.current.destroy();
+      editView.current = null;
+    }
+  };
+
+  // 创建 EditorView
+  const createEditor = (lastClick: { node: Node; offset: number } | null) => {
+    if (ref.current && props.focuseId === props.node.id) {
       const state = EditorState.create({
         schema: extendedSchema,
-        doc: PMNode.fromJSON(schema, props.node.content),
+        doc: PMNode.fromJSON(extendedSchema, props.node.content),
         plugins: [
           history(),
           keymap({
-            Enter() {
-              props.onAddNode(props.node);
+            Enter: () => {
+              props.onAddNode(props.node, editView.current!);
               return true;
             },
-            Tab() {
+            Tab: () => {
               if (editView.current) {
-                const selection = editView.current.state.selection;
-                props.onTabNode(props.node, selection.toJSON());
+                props.onTabNode(
+                  props.node,
+                  editView.current
+                );
               }
               return true;
             },
@@ -47,7 +85,7 @@ function NoteNode(props: NoteNodeProps) {
         ],
       });
 
-      editView.current = new EditorView(ref.current!, {
+      editView.current = new EditorView(ref.current, {
         state,
         dispatchTransaction(tr) {
           const newState = editView.current!.state.apply(tr);
@@ -58,9 +96,8 @@ function NoteNode(props: NoteNodeProps) {
           if (from !== to) {
             const start = editView.current!.coordsAtPos(from);
             const end = editView.current!.coordsAtPos(to);
-            console.log(start, end , 'ssssss')
             setSelectionCoords({
-              top: Math.min(start.top, end.top) - 60,
+              top: Math.min(start.top, end.top) - 40,
               left: (start.left + end.left) / 2,
             });
           } else {
@@ -69,36 +106,62 @@ function NoteNode(props: NoteNodeProps) {
         },
         handleDOMEvents: {
           focus() {
-            props.onFocuse(props.node);
-
-            setActionVisible(false);
+            props.onFocuse(props.node, editView.current!);
             return false;
           },
         },
       });
 
-      if (props.focuseId === props.node.id) {
-        if (props.node.selection && editView.current) {
-          const state = editView.current.state;
-          const selection = TextSelection.fromJSON(
-            state.doc,
-            props.node.selection
-          );
-          const newState = state.apply(state.tr.setSelection(selection));
-          editView.current.updateState(newState);
-        }
-        editView.current.focus();
+      // focus + restore selection if exists
+      if (props.node.selection) {
+        const selection = TextSelection.fromJSON(
+          editView.current.state.doc,
+          props.node.selection
+        );
+        editView.current.updateState(
+          editView.current.state.apply(
+            editView.current.state.tr.setSelection(selection)
+          )
+        );
       }
+
+      try {
+        if (lastClick) {
+          console.log(lastClick, 'ffff')
+          const { offset } = lastClick;
+          const pos = editView.current.posAtDOM(editView.current.dom, offset);
+          const sel = TextSelection.create(editView.current.state.doc, pos);
+          const tr = editView.current.state.tr.setSelection(sel);
+          editView.current.dispatch(tr);
+        }
+      } catch (e) {
+        console.warn("无法定位点击位置，可能点击在非内容区", e);
+      }
+      lastClickPos.current = null;
+
+      editView.current.focus();
     }
-  }, []);
+  };
+
+  useEffect(() => {
+    destroyEditor();
+    const timeout = setTimeout(() => {
+      console.log(lastClickPos.current, 'lastClickPos')
+      createEditor(lastClickPos.current);
+    }, 0); // next tick
+
+    return () => {
+      clearTimeout(timeout);
+      destroyEditor();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.focuseId]);
 
   const handleFormat = (type: FormatType, payload?: string) => {
-    console.log(type, editView, )
     if (!editView.current) return;
     const view = editView.current;
     const markType = extendedSchema.marks[type];
     if (!markType) return;
-    console.log(type, payload, 'ssss');
     if (type === "link" && payload) {
       const { from, to } = view.state.selection;
       const tr = view.state.tr;
@@ -110,7 +173,6 @@ function NoteNode(props: NoteNodeProps) {
       if (markType && editView.current) {
         const { state } = editView.current;
         const { empty } = state.selection;
-        console.log(empty, state.selection);
         if (!empty) {
           toggleMark(markType, { color: payload })(
             state,
@@ -131,7 +193,7 @@ function NoteNode(props: NoteNodeProps) {
   const onActionClick = (id: ActionType) => {
     switch (id) {
       case "delete":
-        props.onDeleteNode(props.node);
+        props.onDeleteNode(props.node, editView.current!);
         break;
     }
   };
@@ -152,7 +214,18 @@ function NoteNode(props: NoteNodeProps) {
           )}
         </div>
         <div className="NoteNode-icon"></div>
-        <div ref={ref} className="NoteNode-content"></div>
+        {props.focuseId === props.node.id ? (
+          <div ref={ref} className="NoteNode-content"></div>
+        ) : (
+          <div
+            className="NoteNode-readonly"
+            contentEditable
+            onClick={() => onNodeFocuse()}
+            dangerouslySetInnerHTML={{
+              __html: renderContentToHTML(props.node.content),
+            }}
+          />
+        )}
         {selectionCoords && props.focuseId === props.node.id && (
           <FloatingToolbar
             top={selectionCoords.top}
