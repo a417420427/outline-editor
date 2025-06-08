@@ -1,54 +1,47 @@
-# React + TypeScript + Vite
+# 大纲笔记编辑器
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+基于 ProseMirror 和 Zustand 实现的可嵌套大纲笔记编辑器，支持丰富文本编辑、节点层级调整等功能。
 
-Currently, two official plugins are available:
+## 主要功能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **树形大纲结构**，每个节点包含独立的 ProseMirror 编辑器状态
+- 利用 Zustand 管理编辑器状态和大纲树结构，实现响应式高性能渲染
+- 支持节点增删改，节点拖拽和层级调整（Tab 键实现）
+- 集成 ProseMirror 的编辑器插件，管理复杂文本操作
 
-## Expanding the ESLint configuration
+## 状态管理
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- 使用 Zustand 作为全局状态管理工具
+- 维护 `tree` 和 `nodeMap` 两个核心状态，`tree` 维护节点树结构，`nodeMap` 用于高效节点查找
+- 每次节点更新会更新 `tree` 和 `nodeMap`，保证数据同步
+- 历史版本管理功能 **待定**，后续考虑结合 ProseMirror 的 `history` 插件和 Zustand 进行优化
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## TODO
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- [ ] 历史撤销与重做（Undo/Redo）功能设计与实现
+- [ ] 节点拖拽排序和层级调整（支持鼠标拖动）
+- [ ] 多节点选中与批量操作支持
+- [ ] 光标和选区状态的精细同步，提升编辑体验
+- [ ] 持久化存储方案（本地存储或云端同步）
+- [ ] 性能优化：虚拟滚动、大纲折叠等
+- [ ] 移动端适配和触摸手势支持
+- [ ] 插件机制，支持更多富文本格式和自定义扩展
+- [ ] 单元测试和集成测试，提升代码可靠性
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 使用说明
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+1. **初始化大纲数据**  
+   使用 `tree` 初始化大纲结构，每个节点存储其内容及子节点列表。
+
+2. **渲染**  
+   通过递归渲染节点组件，选中节点时展示编辑器，非选中状态展示只读视图。
+
+3. **编辑操作**  
+   编辑器内容变化触发 `onTransaction` 回调，同步更新全局状态。
+
+4. **节点层级调整**  
+   通过自定义方法实现节点 Tab 缩进调整，调整树结构并更新状态。
+
+---
+
+欢迎反馈和贡献，感谢使用！
