@@ -3,13 +3,7 @@ import { EditorView } from "prosemirror-view";
 import { Node } from "prosemirror-model";
 
 import { Selection } from "prosemirror-state";
-
-interface HistoryEntry {
-  tree: OutlineNode[];
-  focusId: string;
-  focusOffset: number;
-  // 以后有需要可以加更多
-}
+import { cloudStorage } from "../service/cloudStorage";
 
 const initialTree = [
   {
@@ -22,18 +16,6 @@ const initialTree = [
     children: [],
   },
 ];
-
-interface OutlineState {
-  tree: OutlineNode[];
-  nodeMap: Record<string, OutlineNode>;
-  focusId: string;
-  focusOffset: number;
-  editorView: EditorView | null;
-  history: HistoryEntry[];
-  historyIndex: number;
-  undoTree: () => void;
-  redoTree: () => void;
-}
 
 interface OutlineActions {
   /** 更新当前树 */
@@ -64,21 +46,18 @@ interface OutlineActions {
   pushHistory: () => void;
   /** 记录当前历史的节点内操作 */
   updateCurrentHistory: () => void;
+  /** 初始化数据 */
+  initState: () => void;
+  /** 保存数据 */
+  onSaveState: () => void;
 }
 
 export const useOutlineStore = create<OutlineState & OutlineActions>(
   (set, get) => ({
-    tree: initialTree,
-    nodeMap: buildNodeMap(initialTree),
+    tree: [],
     focusId: "",
     editorView: null,
-    history: [
-      {
-        tree: initialTree,
-        focusId: initialTree[0].id, // 初始焦点为第一个节点
-        focusOffset: 0, // 初始光标偏移为0
-      },
-    ],
+    history: [],
     focusOffset: 0,
     setTree: (newTree) => {
       set({
@@ -93,11 +72,7 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       const { history, historyIndex } = get();
       if (historyIndex > 0) {
         const prevEntry = history[historyIndex - 1];
-        console.log("undoTree to", {
-          tree: prevEntry.tree,
-          focusId: prevEntry.focusId,
-          focusOffset: prevEntry.focusOffset,
-        });
+
         set({
           tree: prevEntry.tree,
           focusId: prevEntry.focusId,
@@ -120,8 +95,10 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       }
     },
     pushHistory: () => {
-      const { tree, focusId, focusOffset, history } = get();
-      const nextHistory = [...history, { tree, focusId, focusOffset }];
+      const { tree, focusId, focusOffset, history, historyIndex } = get();
+      // 截断历史数组，丢弃当前historyIndex之后的所有记录（防止分叉）
+      const truncatedHistory = history.slice(0, historyIndex + 1);
+      const nextHistory = [...truncatedHistory, { tree, focusId, focusOffset }];
       set({
         history: nextHistory,
         historyIndex: nextHistory.length - 1,
@@ -364,6 +341,44 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
 
       return findNodeByIdFromTree(tree, id);
     },
+    initState: () => {
+      cloudStorage.loadState().then((state) => {
+        console.log("加载状态", state);
+        if (state) {
+          set({
+            tree: state.tree || initialTree,
+            focusId: state.focusId || initialTree[0].id,
+            focusOffset: state.focusOffset || 0,
+            history: state.history || [
+              {
+                tree: state.tree || initialTree,
+                focusId: state.focusId || initialTree[0].id,
+                focusOffset: state.focusOffset || 0,
+              },
+            ],
+            historyIndex: 0,
+          });
+        } else {
+          set({
+            tree: initialTree,
+            focusId: initialTree[0].id,
+            history: [
+              {
+                tree: initialTree,
+                focusId: initialTree[0].id,
+                focusOffset: 0,
+              },
+            ],
+            historyIndex: 0,
+            focusOffset: 0,
+          });
+        }
+      });
+    },
+    onSaveState: () => {
+      const { tree, focusId, focusOffset } = get();
+      cloudStorage.saveState({ tree, focusId, focusOffset });
+    },
   })
 );
 
@@ -403,21 +418,21 @@ function findNodeWithParent(
  * @param tree 原始树形结构节点数组
  * @returns 返回每个节点及其父节点ID的映射关系
  */
-function buildNodeMap(tree: OutlineNode[]): Record<string, OutlineNode> {
-  const map: Record<string, OutlineNode> = {};
+// function buildNodeMap(tree: OutlineNode[]): Record<string, OutlineNode> {
+//   const map: Record<string, OutlineNode> = {};
 
-  function traverse(nodes: OutlineNode[], parentId?: string) {
-    for (const node of nodes) {
-      map[node.id] = { ...node, parentId };
-      if (node.children && node.children.length > 0) {
-        traverse(node.children, node.id);
-      }
-    }
-  }
+//   function traverse(nodes: OutlineNode[], parentId?: string) {
+//     for (const node of nodes) {
+//       map[node.id] = { ...node, parentId };
+//       if (node.children && node.children.length > 0) {
+//         traverse(node.children, node.id);
+//       }
+//     }
+//   }
 
-  traverse(tree);
-  return map;
-}
+//   traverse(tree);
+//   return map;
+// }
 
 function findNodeByIdFromTree(
   tree: OutlineNode[],

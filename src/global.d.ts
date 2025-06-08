@@ -20,6 +20,28 @@ declare global {
     nodeId: string;
     focuseId: string;
   }
+  interface HistoryEntry {
+    tree: OutlineNode[];
+    focusId: string;
+    focusOffset: number;
+    // 以后有需要可以加更多
+  }
+  interface CloudStorage {
+    saveState(state: Partial<OutlineState>): Promise<void>;
+    loadState(): Promise<Partial<OutlineState> | null>;
+  }
+
+  interface OutlineState {
+    tree: OutlineNode[];
+    // nodeMap: Record<string, OutlineNode>;
+    focusId: string;
+    focusOffset: number;
+    editorView: EditorView | null;
+    history: HistoryEntry[];
+    historyIndex: number;
+    undoTree: () => void;
+    redoTree: () => void;
+  }
 
   interface TreeContext {
     tree: OutlineNode[]; // 整棵树
