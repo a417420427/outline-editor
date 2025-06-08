@@ -5,7 +5,7 @@ import type { EditorView } from "prosemirror-view";
 declare global {
   interface OutlineNode {
     title?: string; // 节点标题
-    expanded?: boolean; // 可选，指示节点是否展开
+    expand: boolean; // 可选，指示节点是否展开
 
     id: string; // 唯一标识符
     content: JSONContent; // ProseMirror 文档内容的 JSON 表示

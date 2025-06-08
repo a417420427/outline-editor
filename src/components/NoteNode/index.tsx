@@ -3,7 +3,7 @@ import { useState } from "react";
 import { NoteNodeEditor } from "./NoteNodeEditor";
 import { NoteNodeReadonly } from "./NoteNodeReadonly";
 import NodeActionsBar from "./NodeActionsBar";
-import { List } from "lucide-react";
+import { List, ChevronDown } from "lucide-react";
 import "./index.scss";
 import { useOutlineStore } from "../../store";
 
@@ -11,21 +11,22 @@ export function NoteNode(props: NoteNodeProps) {
   const { nodeId, focuseId } = props;
   const [actionVisible, setActionVisible] = useState(false);
 
-
   const node = useOutlineStore((state) => state.findNodeById(nodeId)!);
   const deleteNode = useOutlineStore((state) => state.deleteNode);
 
+  const onToggleExpandNode = useOutlineStore(
+    (state) => state.onToggleExpandNode
+  );
   const onActionClick = (action: ActionType) => {
-
     switch (action) {
-      case 'delete':
+      case "delete":
         deleteNode(nodeId);
-        break
+        break;
       default:
         console.warn("未处理的操作类型:", action);
         break;
     }
-  }
+  };
   return (
     <div className="NoteNode">
       <div className="NoteNode-block">
@@ -38,13 +39,23 @@ export function NoteNode(props: NoteNodeProps) {
             />
           )}
           {focuseId === nodeId && actionVisible && (
-            <NodeActionsBar
-              onClick={onActionClick}
-              actions={[]}
-            />
+            <NodeActionsBar onClick={onActionClick} actions={[]} />
           )}
         </div>
+
+        <div className="NoteNode-replace">
+          {focuseId === nodeId &&
+          node &&
+          node.children &&
+          node.children.length > 0 ? (
+            <ChevronDown style={{
+              transform: !node.expand ? "rotate(-90deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }} onClick={() => onToggleExpandNode(nodeId)} cursor="pointer" className="NoteNode-expand"></ChevronDown>
+          ) : null}
+        </div>
         <div className="NoteNode-icon" />
+
         {focuseId === nodeId ? (
           <NoteNodeEditor nodeId={nodeId} onTransaction={() => {}} />
         ) : (
@@ -54,6 +65,7 @@ export function NoteNode(props: NoteNodeProps) {
       <div className="indent" style={{ paddingLeft: 16 }}>
         {node &&
           node.children &&
+          node.expand &&
           node.children.map((child) => (
             <NoteNode key={child.id} nodeId={child.id} focuseId={focuseId} />
           ))}

@@ -5,9 +5,26 @@ import { Node, Node as PMNode } from "prosemirror-model";
 import { extendedSchema } from "../schema/extendedSchema";
 import { Selection } from "prosemirror-state";
 
+function getDefaultNode(
+  args: Partial<
+    Pick<OutlineNode, "content" | "expand" | "children" | "parentId">
+  > = {}
+): OutlineNode {
+  return {
+    id: crypto.randomUUID(),
+    expand: true,
+    content: {
+      type: "paragraph",
+      content: [{ type: "text", text: "" }],
+    },
+    children: [],
+    ...args
+  };
+}
 const initialTree = [
   {
     id: Math.random().toFixed(10),
+    expand: true,
     content: {
       type: "paragraph",
       content: [{ type: "text", text: "大纲笔记功能" }],
@@ -30,6 +47,7 @@ interface OutlineActions {
   addNode: (node: OutlineNode, editorView: EditorView) => void;
   tabNode: (nodeId: string, editorView: EditorView) => void;
   deleteNode: (nodeId: string) => void;
+  onToggleExpandNode: (nodeId: string) => void;
   findNodeById: (id: string) => OutlineNode | null;
   setEditorView: (view: EditorView | null) => void;
   setFocusOffset: (offset: number) => void;
@@ -75,6 +93,7 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       // 构造新节点（空或插入后半部分）
       const newNode = {
         id: crypto.randomUUID(),
+        expand: true,
         content: after.toJSON(), // 或 extendedSchema.node("paragraph").toJSON()
         children: [],
       };
@@ -156,7 +175,29 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       }
       return find(get().tree);
     },
-
+    onToggleExpandNode(nodeId: string) {
+      set((state) => {
+        const toggleExpand = (nodes: OutlineNode[]): OutlineNode[] => {
+          return nodes.map((node) => {
+            if (node.id === nodeId) {
+              return {
+                ...node,
+                expand: !node.expand, // 切换展开状态
+              };
+            } else if (node.children?.length) {
+              return {
+                ...node,
+                children: toggleExpand(node.children), // 递归处理子节点
+              };
+            }
+            return node; // 返回未修改的节点
+          });
+        };
+        return {
+          tree: toggleExpand(state.tree), // 更新树结构
+        };
+      });
+    },
     /**
      * 在编辑视图中添加一个新的节点到给定的节点之后。
      *
@@ -180,12 +221,11 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       const before = trDoc.cut(0, offset);
       const after = trDoc.cut(offset, docNode.content.size);
 
-      const newNode: OutlineNode = {
-        id: Math.random().toString(36).slice(2),
+      const newNode: OutlineNode = getDefaultNode({
         content: after.toJSON(),
         children: [],
         parentId: node.parentId,
-      };
+      });
 
       // 修改老节点内容
       node.content = before.toJSON();
