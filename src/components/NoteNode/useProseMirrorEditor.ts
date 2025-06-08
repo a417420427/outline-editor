@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { EditorView } from "prosemirror-view";
 import { EditorState, TextSelection } from "prosemirror-state";
-import { history } from "prosemirror-history";
+import { history, undo, redo, undoDepth, redoDepth } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
 import { baseKeymap } from "prosemirror-commands";
 
@@ -28,9 +28,12 @@ export function useProseMirrorEditor({
   const setEditView = useOutlineStore((state) => state.setEditorView);
   const onSplitNode = useOutlineStore((state) => state.onSplitNode);
   const focusOffset = useOutlineStore((state) => state.focusOffset);
+
+  const undoTree = useOutlineStore((state) => state.undoTree);
+  const redoTree = useOutlineStore((state) => state.redoTree);
   const tabNode = useOutlineStore((state) => state.tabNode);
   const onTransaction = useOutlineStore((state) => state.onTransaction);
-  
+
   useEffect(() => {
     if (mountedRef.current) return;
 
@@ -38,9 +41,14 @@ export function useProseMirrorEditor({
       const state = EditorState.create({
         schema: extendedSchema,
         doc: extendedSchema.nodeFromJSON(docJSON),
-
+        selection: TextSelection.create(
+          extendedSchema.nodeFromJSON(docJSON),
+          focusOffset,
+          focusOffset
+        ),
         plugins: [
           history(),
+
           keymap({
             Enter: () => {
               onSplitNode(nodeId, viewRef.current!);
@@ -48,6 +56,26 @@ export function useProseMirrorEditor({
             },
             Tab: () => {
               tabNode(nodeId, viewRef.current!);
+              return true;
+            },
+            "Mod-z": () => {
+              const view = viewRef.current;
+              if (!view || !view.hasFocus()) return false;
+              if (undoDepth(view.state) <= 0) {
+                undoTree();
+                return true;
+              }
+              undo(view.state, view.dispatch);
+              return true;
+            },
+            "Mod-y": () => {
+              const view = viewRef.current;
+              if (!view || !view.hasFocus()) return false;
+              if (redoDepth(view.state) <= 0) {
+                redoTree();
+                return true;
+              }
+              redo(view.state, view.dispatch);
               return true;
             },
           }),
@@ -61,10 +89,7 @@ export function useProseMirrorEditor({
           const newState = viewRef.current!.state.apply(tr);
           viewRef.current!.updateState(newState);
           onTransaction(newState.doc, newState.selection);
-          console.log("Transaction dispatched:", {
-            doc: newState.doc,
-            selection: newState.selection,
-          });
+
           // 计算选区位置，更新浮动工具栏坐标
           const { from, to } = newState.selection;
           if (from !== to) {
@@ -86,10 +111,6 @@ export function useProseMirrorEditor({
           },
         },
       });
-
-      const { tr } = viewRef.current.state;
-      const selection = TextSelection.create(tr.doc, focusOffset, focusOffset);
-      viewRef.current.dispatch(tr.setSelection(selection));
 
       viewRef.current.focus();
       setEditView(viewRef.current);

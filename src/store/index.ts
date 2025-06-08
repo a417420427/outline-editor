@@ -1,26 +1,16 @@
 import { create } from "zustand";
 import { EditorView } from "prosemirror-view";
-import { Node, Node as PMNode } from "prosemirror-model";
+import { Node } from "prosemirror-model";
 
-import { extendedSchema } from "../schema/extendedSchema";
 import { Selection } from "prosemirror-state";
 
-function getDefaultNode(
-  args: Partial<
-    Pick<OutlineNode, "content" | "expand" | "children" | "parentId">
-  > = {}
-): OutlineNode {
-  return {
-    id: crypto.randomUUID(),
-    expand: true,
-    content: {
-      type: "paragraph",
-      content: [{ type: "text", text: "" }],
-    },
-    children: [],
-    ...args
-  };
+interface HistoryEntry {
+  tree: OutlineNode[];
+  focusId: string;
+  focusOffset: number;
+  // 以后有需要可以加更多
 }
+
 const initialTree = [
   {
     id: Math.random().toFixed(10),
@@ -39,22 +29,41 @@ interface OutlineState {
   focusId: string;
   focusOffset: number;
   editorView: EditorView | null;
+  history: HistoryEntry[];
+  historyIndex: number;
+  undoTree: () => void;
+  redoTree: () => void;
 }
 
 interface OutlineActions {
+  /** 更新当前树 */
   setTree: (tree: OutlineNode[]) => void;
+  /** 设置当前焦点节点ID */
   setFocusId: (id: string) => void;
-  addNode: (node: OutlineNode, editorView: EditorView) => void;
+  /** TAB缩进 将当前节点设为上一个兄弟节点的子节点 */
   tabNode: (nodeId: string, editorView: EditorView) => void;
+  /** 删除节点 */
   deleteNode: (nodeId: string) => void;
+  /** 展开收起 */
   onToggleExpandNode: (nodeId: string) => void;
-  findNodeById: (id: string) => OutlineNode | null;
+  /** 设置编辑器视图 */
   setEditorView: (view: EditorView | null) => void;
+  /** 设置光标偏移 */
   setFocusOffset: (offset: number) => void;
+  /** 切割节点 */
   onSplitNode: (nodeId: string, editorView: EditorView) => void;
+  /** 更新当前节点内容 */
   updateNodeById: (nodeId: string, newContent: OutlineNode["content"]) => void;
+  /** 在指定节点后添加新节点 */
   addNodeAfter: (currentNodeId: string, newNode: OutlineNode) => void;
+  /** 编辑内容变化时将内容更新到当前节点 */
   onTransaction: (doc: Node, selection: Selection) => void;
+  /** 通过ID查找节点 */
+  findNodeById: (id: string) => OutlineNode | null;
+  /** 新增历史 */
+  pushHistory: () => void;
+  /** 记录当前历史的节点内操作 */
+  updateCurrentHistory: () => void;
 }
 
 export const useOutlineStore = create<OutlineState & OutlineActions>(
@@ -63,17 +72,76 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
     nodeMap: buildNodeMap(initialTree),
     focusId: "",
     editorView: null,
+    history: [
+      {
+        tree: initialTree,
+        focusId: initialTree[0].id, // 初始焦点为第一个节点
+        focusOffset: 0, // 初始光标偏移为0
+      },
+    ],
     focusOffset: 0,
-    setTree: (tree) => set({ tree }),
+    setTree: (newTree) => {
+      set({
+        tree: newTree,
+      });
+    },
     setFocusId: (focusId) => set({ focusId }),
     setFocusOffset: (focusOffset) => set({ focusOffset }),
     setEditorView: (editorView) => set({ editorView }),
+    historyIndex: 0,
+    undoTree: () => {
+      const { history, historyIndex } = get();
+      if (historyIndex > 0) {
+        const prevEntry = history[historyIndex - 1];
+        console.log("undoTree to", {
+          tree: prevEntry.tree,
+          focusId: prevEntry.focusId,
+          focusOffset: prevEntry.focusOffset,
+        });
+        set({
+          tree: prevEntry.tree,
+          focusId: prevEntry.focusId,
+          focusOffset: prevEntry.focusOffset,
+          historyIndex: historyIndex - 1,
+        });
+      }
+    },
+
+    redoTree: () => {
+      const { history, historyIndex } = get();
+      if (historyIndex < history.length - 1) {
+        const nextEntry = history[historyIndex + 1];
+        set({
+          tree: nextEntry.tree,
+          focusId: nextEntry.focusId,
+          focusOffset: nextEntry.focusOffset,
+          historyIndex: historyIndex + 1,
+        });
+      }
+    },
+    pushHistory: () => {
+      const { tree, focusId, focusOffset, history } = get();
+      const nextHistory = [...history, { tree, focusId, focusOffset }];
+      set({
+        history: nextHistory,
+        historyIndex: nextHistory.length - 1,
+      });
+    },
+    updateCurrentHistory: () => {
+      const { tree, focusId, focusOffset, history, historyIndex } = get();
+
+      const newEntry: HistoryEntry = { tree, focusId, focusOffset };
+      const newHistory = [...history];
+      newHistory[historyIndex] = newEntry;
+      set({ history: newHistory });
+    },
     onSplitNode: (nodeId: string, editorView: EditorView) => {
       const {
         findNodeById,
         updateNodeById,
         addNodeAfter,
         setFocusId,
+        pushHistory,
         setFocusOffset,
       } = get();
       const node = findNodeById(nodeId);
@@ -100,6 +168,9 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       setFocusOffset(0); // 重置光标偏移
       addNodeAfter(nodeId, newNode);
       setFocusId(newNode.id);
+
+      pushHistory(); // 添加到历史记录
+      console.log(get());
     },
     /**
      * 通过节点ID更新节点的内容
@@ -164,17 +235,7 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
      * @param id 需要查找的节点的ID
      * @returns 找到的节点对象，如果未找到则返回null
      */
-    findNodeById: (id: string) => {
-      function find(nodes: OutlineNode[]): OutlineNode | null {
-        for (const node of nodes) {
-          if (node.id === id) return node;
-          const found = find(node.children);
-          if (found) return found;
-        }
-        return null;
-      }
-      return find(get().tree);
-    },
+
     onToggleExpandNode(nodeId: string) {
       set((state) => {
         const toggleExpand = (nodes: OutlineNode[]): OutlineNode[] => {
@@ -198,60 +259,6 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
         };
       });
     },
-    /**
-     * 在编辑视图中添加一个新的节点到给定的节点之后。
-     *
-     * @param node 要添加新节点之前的OutlineNode对象。
-     * @param editorView 当前编辑器的视图，用于获取选择状态和进行DOM操作。
-     *
-     * @description
-     * 该函数首先解析给定的节点内容，并根据当前编辑器的选择状态确定插入位置。
-     * 然后，创建一个新的OutlineNode对象，其内容为原始节点内容之后的部分。
-     * 接着，更新原始节点的内容为插入点之前的内容。
-     * 最后，通过递归遍历现有的树结构，在指定节点之后插入新节点，并更新整个树结构。
-     * 更新后，将新的树结构设置回状态，并将焦点设置为新节点的ID。
-     */
-    addNode: (node: OutlineNode, editorView: EditorView) => {
-      const { tree, setTree, setFocusId } = get();
-      const docNode = PMNode.fromJSON(extendedSchema, node.content);
-      const selection = editorView.state.selection;
-      const offset = selection?.anchor ?? 0;
-
-      const trDoc = docNode.cut(0, docNode.content.size);
-      const before = trDoc.cut(0, offset);
-      const after = trDoc.cut(offset, docNode.content.size);
-
-      const newNode: OutlineNode = getDefaultNode({
-        content: after.toJSON(),
-        children: [],
-        parentId: node.parentId,
-      });
-
-      // 修改老节点内容
-      node.content = before.toJSON();
-
-      // 更新树（插入 newNode 紧跟 node 后面）
-      function insertNode(nodes: OutlineNode[]): OutlineNode[] {
-        return nodes.flatMap((n) => {
-          if (n.id === node.id) {
-            if (node.parentId) {
-              return [n, newNode]; // 会在父 children 里插入
-            } else {
-              return [n, newNode]; // 根层插入
-            }
-          }
-          if (n.children.length > 0) {
-            n.children = insertNode(n.children);
-          }
-          return [n];
-        });
-      }
-
-      const newTree = insertNode(tree);
-
-      setTree(newTree);
-      setFocusId(newNode.id);
-    },
 
     /**
      * 处理大纲节点移动的操作，将指定的节点移动到其前一个节点的子节点列表中 按Tab键触发。
@@ -259,7 +266,7 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
      * @param editorView 编辑器视图对象，用于获取当前选区信息
      */
     tabNode: (nodeId: string, editorView: EditorView) => {
-      const { tree, setTree, setFocusId } = get();
+      const { tree, setTree, setFocusId, pushHistory } = get();
       const newTree = structuredClone(tree);
 
       const result = findNodeWithParent(newTree, nodeId);
@@ -288,9 +295,11 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       // 5. 提交更新
       setTree(newTree);
       setFocusId(node.id);
+      pushHistory(); // 添加到历史记录
     },
     onTransaction: (doc: Node, selection: Selection) => {
-      const { focusId, tree, setTree } = get();
+      const { focusId, tree, setTree, updateCurrentHistory, setFocusOffset } =
+        get();
       if (!focusId) return;
 
       const updateNode = (nodes: OutlineNode[]): OutlineNode[] => {
@@ -313,6 +322,11 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
 
       const newTree = updateNode(tree);
       setTree(newTree);
+
+      // 更新光标偏移
+      setFocusOffset(selection.anchor);
+
+      updateCurrentHistory(); // 更新当前历史记录
     },
 
     /**
@@ -320,7 +334,7 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
      * @param nodeId 要删除的节点的ID
      */
     deleteNode: (nodeId: string) => {
-      const { tree, setTree, findNodeById, setFocusId } = get();
+      const { tree, setTree, setFocusId, findNodeById, pushHistory } = get();
       const nodeToDelete = findNodeById(nodeId);
       if (!nodeToDelete) return;
       const parentId = nodeToDelete.parentId;
@@ -343,6 +357,12 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
 
       setFocusId(""); // 清除焦点 ID
       setTree(updatedTree);
+      pushHistory(); // 添加到历史记录
+    },
+    findNodeById(id: string): OutlineNode | null {
+      const { tree } = get();
+
+      return findNodeByIdFromTree(tree, id);
     },
   })
 );
@@ -397,4 +417,18 @@ function buildNodeMap(tree: OutlineNode[]): Record<string, OutlineNode> {
 
   traverse(tree);
   return map;
+}
+
+function findNodeByIdFromTree(
+  tree: OutlineNode[],
+  id: string
+): OutlineNode | null {
+  for (const node of tree) {
+    if (node.id === id) return node;
+    if (node.children && node.children.length > 0) {
+      const found = findNodeByIdFromTree(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
 }
