@@ -36,6 +36,13 @@
   &-replace {
     position: relative;
   }
+  .NoteNode-readonly {
+    text-decoration: none;
+    border: none;
+  }
+  .NoteNode-readonly:focus {
+  outline: none;
+}
 }
 
 .NodeActionsBar {

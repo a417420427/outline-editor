@@ -1,9 +1,3 @@
-export const MarkActionTypes = {
-  Bold: 'bold',
-  Italic: 'italic',
-  Underline: 'underline',
-  Strike: 'strike',
-  Code: 'code',
-} as const;
+import type { extendedSchema } from "../schema/extendedSchema";
 
-export type MarkActionType = typeof MarkActionTypes[keyof typeof MarkActionTypes];
+export type MarkActionType = keyof typeof extendedSchema.marks;
