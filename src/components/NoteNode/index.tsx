@@ -13,7 +13,19 @@ export function NoteNode(props: NoteNodeProps) {
 
 
   const node = useOutlineStore((state) => state.findNodeById(nodeId)!);
+  const deleteNode = useOutlineStore((state) => state.deleteNode);
 
+  const onActionClick = (action: ActionType) => {
+
+    switch (action) {
+      case 'delete':
+        deleteNode(nodeId);
+        break
+      default:
+        console.warn("未处理的操作类型:", action);
+        break;
+    }
+  }
   return (
     <div className="NoteNode">
       <div className="NoteNode-block">
@@ -27,7 +39,7 @@ export function NoteNode(props: NoteNodeProps) {
           )}
           {focuseId === nodeId && actionVisible && (
             <NodeActionsBar
-              onClick={(id) => id === "delete"}
+              onClick={onActionClick}
               actions={[]}
             />
           )}

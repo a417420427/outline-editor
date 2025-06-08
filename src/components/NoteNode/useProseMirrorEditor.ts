@@ -14,7 +14,6 @@ export function useProseMirrorEditor({
   nodeId,
 }: {
   docJSON: string;
-
   nodeId: string;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -30,7 +29,8 @@ export function useProseMirrorEditor({
   const onSplitNode = useOutlineStore((state) => state.onSplitNode);
   const focusOffset = useOutlineStore((state) => state.focusOffset);
   const tabNode = useOutlineStore((state) => state.tabNode);
-  // const onTransaction = useOutlineStore((state) => state.onTransaction);
+  const onTransaction = useOutlineStore((state) => state.onTransaction);
+  
   useEffect(() => {
     if (mountedRef.current) return;
 
@@ -60,8 +60,11 @@ export function useProseMirrorEditor({
         dispatchTransaction(tr) {
           const newState = viewRef.current!.state.apply(tr);
           viewRef.current!.updateState(newState);
-          // onTransaction(newState.doc.toJSON(), newState.selection);
-
+          onTransaction(newState.doc, newState.selection);
+          console.log("Transaction dispatched:", {
+            doc: newState.doc,
+            selection: newState.selection,
+          });
           // 计算选区位置，更新浮动工具栏坐标
           const { from, to } = newState.selection;
           if (from !== to) {

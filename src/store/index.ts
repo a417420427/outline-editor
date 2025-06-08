@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { EditorView } from "prosemirror-view";
-import { Node as PMNode } from "prosemirror-model";
+import { Node, Node as PMNode } from "prosemirror-model";
 
 import { extendedSchema } from "../schema/extendedSchema";
 import { Selection } from "prosemirror-state";
@@ -29,14 +29,14 @@ interface OutlineActions {
   setFocusId: (id: string) => void;
   addNode: (node: OutlineNode, editorView: EditorView) => void;
   tabNode: (nodeId: string, editorView: EditorView) => void;
-  deleteNode: (node: OutlineNode) => void;
+  deleteNode: (nodeId: string) => void;
   findNodeById: (id: string) => OutlineNode | null;
   setEditorView: (view: EditorView | null) => void;
   setFocusOffset: (offset: number) => void;
   onSplitNode: (nodeId: string, editorView: EditorView) => void;
   updateNodeById: (nodeId: string, newContent: OutlineNode["content"]) => void;
   addNodeAfter: (currentNodeId: string, newNode: OutlineNode) => void;
-  onTransaction: (docJSON: string, selection: Selection) => void
+  onTransaction: (doc: Node, selection: Selection) => void;
 }
 
 export const useOutlineStore = create<OutlineState & OutlineActions>(
@@ -249,7 +249,7 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       setTree(newTree);
       setFocusId(node.id);
     },
-    onTransaction: (docJSON: string, selection: Selection) => {
+    onTransaction: (doc: Node, selection: Selection) => {
       const { focusId, tree, setTree } = get();
       if (!focusId) return;
 
@@ -258,8 +258,8 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
           if (node.id === focusId) {
             return {
               ...node,
-              content: docJSON,
-              selection,
+              content: doc.toJSON(),
+              selection: selection.toJSON(),
             };
           } else if (node.children.length > 0) {
             return {
@@ -277,39 +277,44 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
 
     /**
      * 删除指定ID的节点
-     *
-     * @param node 需要删除的节点对象，包含id和parentId属性
+     * @param nodeId 要删除的节点的ID
      */
-    deleteNode: (node: OutlineNode) => {
-      const { tree, setTree } = get();
-      let newNodes = structuredClone(tree);
-
-      const findNodeById = (
-        id: string,
-        nodes = newNodes
-      ): OutlineNode | null => {
-        for (const node of nodes) {
-          if (node.id === id) return node;
-          const found = findNodeById(id, node.children);
-          if (found) return found;
-        }
-        return null;
+    deleteNode: (nodeId: string) => {
+      const { tree, setTree, findNodeById, setFocusId } = get();
+      const nodeToDelete = findNodeById(nodeId);
+      if (!nodeToDelete) return;
+      const parentId = nodeToDelete.parentId;
+      const newTree = structuredClone(tree); // 深拷贝树结构
+      const findAndDelete = (nodes: OutlineNode[]): OutlineNode[] => {
+        return nodes
+          .map((node) => {
+            if (node.children.length > 0) {
+              node.children = findAndDelete(node.children);
+            }
+            return node;
+          })
+          .filter((node) => node.id !== nodeId);
       };
 
-      const currentParent = findNodeById(node.parentId || "");
-      if (currentParent) {
-        currentParent.children = currentParent.children.filter(
-          (child) => child.id !== node.id
-        );
-      } else {
-        newNodes = newNodes.filter((f) => f.id !== node.id);
-      }
+      // 根节点删除 or 有父节点
+      const updatedTree = !parentId
+        ? newTree.filter((n) => n.id !== nodeId)
+        : findAndDelete(newTree);
 
-      setTree(newNodes);
+      setFocusId(""); // 清除焦点 ID
+      setTree(updatedTree);
     },
   })
 );
 
+/**
+ * 在节点树中查找具有指定ID的节点，并返回该节点及其父节点、索引和兄弟节点。
+ *
+ * @param nodes 节点数组，表示整个节点树。
+ * @param targetId 要查找的节点的ID。
+ * @param parent 当前节点的父节点，默认为null（表示从根节点开始查找）。
+ * @returns 如果找到目标节点，则返回包含目标节点、其索引、父节点和兄弟节点的对象；否则返回null。
+ */
 function findNodeWithParent(
   nodes: OutlineNode[],
   targetId: string,
@@ -333,6 +338,11 @@ function findNodeWithParent(
   return null;
 }
 
+/**
+ * 构建节点映射关系
+ * @param tree 原始树形结构节点数组
+ * @returns 返回每个节点及其父节点ID的映射关系
+ */
 function buildNodeMap(tree: OutlineNode[]): Record<string, OutlineNode> {
   const map: Record<string, OutlineNode> = {};
 

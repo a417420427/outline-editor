@@ -26,7 +26,7 @@ declare global {
     editorView: EditorView; // 编辑器视图实例
     selectionNodeId?: string; // 当前选中节点 ID（如果需要）
     // userId?: string; // 当前用户 ID（可选）
-    config?: Record<string, string | number | boolean|undefined>; // 额外配置
+    config?: Record<string, string | number | boolean | undefined>; // 额外配置
   }
 
   type FormatType = "strong" | "em" | "code" | "link" | "color";
