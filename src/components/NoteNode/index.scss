@@ -37,12 +37,14 @@
     position: relative;
   }
   .NoteNode-readonly {
+    min-width: 40px;
+    height: 100%;
     text-decoration: none;
     border: none;
   }
   .NoteNode-readonly:focus {
-  outline: none;
-}
+    outline: none;
+  }
 }
 
 .NodeActionsBar {

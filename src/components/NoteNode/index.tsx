@@ -5,16 +5,16 @@ import { NoteNodeReadonly } from "./NoteNodeReadonly";
 import NodeActionsBar from "./NodeActionsBar";
 import { List, ChevronDown } from "lucide-react";
 import "./index.scss";
-import { useOutlineStore } from "../../store";
+import { useEditorStore } from "../../store";
 
 export function NoteNode(props: NoteNodeProps) {
   const { nodeId, focuseId } = props;
   const [actionVisible, setActionVisible] = useState(false);
 
-  const node = useOutlineStore((state) => state.findNodeById(nodeId)!);
-  const deleteNode = useOutlineStore((state) => state.deleteNode);
+  const node = useEditorStore((state) => state.findNodeById(nodeId)!);
+  const deleteNode = useEditorStore((state) => state.deleteNode);
 
-  const onToggleExpandNode = useOutlineStore(
+  const onToggleExpandNode = useEditorStore(
     (state) => state.onToggleExpandNode
   );
   const onActionClick = (action: ActionType) => {

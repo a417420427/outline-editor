@@ -3,9 +3,8 @@ import { EditorView } from "prosemirror-view";
 import { Node } from "prosemirror-model";
 
 import { Selection } from "prosemirror-state";
-import { cloudStorage } from "../service/cloudStorage";
 
-const initialTree = [
+export const initialTree = [
   {
     id: Math.random().toFixed(10),
     expand: true,
@@ -16,6 +15,15 @@ const initialTree = [
     children: [],
   },
 ];
+
+export const getInitialState: () => OutlineState = () => ({
+  tree: initialTree,
+  focusId: "",
+  focusOffset: 0,
+  editorView: null,
+  history: [],
+  historyIndex: 0,
+});
 
 interface OutlineActions {
   /** 更新当前树 */
@@ -46,19 +54,27 @@ interface OutlineActions {
   pushHistory: () => void;
   /** 记录当前历史的节点内操作 */
   updateCurrentHistory: () => void;
-  /** 初始化数据 */
-  initState: () => void;
-  /** 保存数据 */
-  onSaveState: () => void;
+  /** 重置数据 */
+  reset: (initialTreeOverride: Partial<OutlineState>) => void;
 }
 
-export const useOutlineStore = create<OutlineState & OutlineActions>(
+export const useEditorStore = create<OutlineState & OutlineActions>(
   (set, get) => ({
     tree: [],
     focusId: "",
     editorView: null,
     history: [],
     focusOffset: 0,
+    historyIndex: 0,
+    reset: (initialTreeOverride: Partial<OutlineState>) => {
+      const { pushHistory } = get();
+     
+      set({
+        ...getInitialState(),
+        ...initialTreeOverride,
+      });
+      pushHistory();
+    },
     setTree: (newTree) => {
       set({
         tree: newTree,
@@ -67,7 +83,6 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
     setFocusId: (focusId) => set({ focusId }),
     setFocusOffset: (focusOffset) => set({ focusOffset }),
     setEditorView: (editorView) => set({ editorView }),
-    historyIndex: 0,
     undoTree: () => {
       const { history, historyIndex } = get();
       if (historyIndex > 0) {
@@ -340,44 +355,6 @@ export const useOutlineStore = create<OutlineState & OutlineActions>(
       const { tree } = get();
 
       return findNodeByIdFromTree(tree, id);
-    },
-    initState: () => {
-      cloudStorage.loadState().then((state) => {
-        console.log("加载状态", state);
-        if (state) {
-          set({
-            tree: state.tree || initialTree,
-            focusId: state.focusId || initialTree[0].id,
-            focusOffset: state.focusOffset || 0,
-            history: state.history || [
-              {
-                tree: state.tree || initialTree,
-                focusId: state.focusId || initialTree[0].id,
-                focusOffset: state.focusOffset || 0,
-              },
-            ],
-            historyIndex: 0,
-          });
-        } else {
-          set({
-            tree: initialTree,
-            focusId: initialTree[0].id,
-            history: [
-              {
-                tree: initialTree,
-                focusId: initialTree[0].id,
-                focusOffset: 0,
-              },
-            ],
-            historyIndex: 0,
-            focusOffset: 0,
-          });
-        }
-      });
-    },
-    onSaveState: () => {
-      const { tree, focusId, focusOffset } = get();
-      cloudStorage.saveState({ tree, focusId, focusOffset });
     },
   })
 );

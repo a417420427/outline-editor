@@ -26,12 +26,8 @@ declare global {
     focusOffset: number;
     // 以后有需要可以加更多
   }
-  interface CloudStorage {
-    saveState(state: Partial<OutlineState>): Promise<void>;
-    loadState(): Promise<Partial<OutlineState> | null>;
-  }
-
   interface OutlineState {
+    title?: string
     tree: OutlineNode[];
     // nodeMap: Record<string, OutlineNode>;
     focusId: string;
@@ -39,8 +35,6 @@ declare global {
     editorView: EditorView | null;
     history: HistoryEntry[];
     historyIndex: number;
-    undoTree: () => void;
-    redoTree: () => void;
   }
 
   interface TreeContext {

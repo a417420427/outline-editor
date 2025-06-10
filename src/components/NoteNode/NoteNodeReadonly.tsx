@@ -1,18 +1,18 @@
 import { DOMSerializer, Node as PMNode } from "prosemirror-model";
 import { extendedSchema } from "../../schema/extendedSchema";
-import { useOutlineStore } from "../../store";
+import { useEditorStore } from "../../store";
 export function NoteNodeReadonly({
   nodeId,
 }: {
   nodeId: string;
 }) {
 
-  const findNodeById = useOutlineStore((state) => state.findNodeById);
+  const findNodeById = useEditorStore((state) => state.findNodeById);
 
   const html = renderContentToHTML(findNodeById(nodeId)!.content);
 
-  const setFocusId = useOutlineStore((state) => state.setFocusId);
-  const setFocusOffset = useOutlineStore((state) => state.setFocusOffset);
+  const setFocusId = useEditorStore((state) => state.setFocusId);
+  const setFocusOffset = useEditorStore((state) => state.setFocusOffset);
   return (
     <div
       className="NoteNode-readonly"

@@ -7,7 +7,7 @@ import { keymap } from "prosemirror-keymap";
 import { baseKeymap } from "prosemirror-commands";
 
 import { extendedSchema } from "../../schema/extendedSchema";
-import { useOutlineStore } from "../../store";
+import { useEditorStore } from "../../store";
 
 export function useProseMirrorEditor({
   docJSON,
@@ -25,14 +25,14 @@ export function useProseMirrorEditor({
     left: number;
   } | null>(null);
 
-  const setEditView = useOutlineStore((state) => state.setEditorView);
-  const onSplitNode = useOutlineStore((state) => state.onSplitNode);
-  const focusOffset = useOutlineStore((state) => state.focusOffset);
+  const setEditView = useEditorStore((state) => state.setEditorView);
+  const onSplitNode = useEditorStore((state) => state.onSplitNode);
+  const focusOffset = useEditorStore((state) => state.focusOffset);
 
-  const undoTree = useOutlineStore((state) => state.undoTree);
-  const redoTree = useOutlineStore((state) => state.redoTree);
-  const tabNode = useOutlineStore((state) => state.tabNode);
-  const onTransaction = useOutlineStore((state) => state.onTransaction);
+  const undoTree = useEditorStore((state) => state.undoTree);
+  const redoTree = useEditorStore((state) => state.redoTree);
+  const tabNode = useEditorStore((state) => state.tabNode);
+  const onTransaction = useEditorStore((state) => state.onTransaction);
 
   useEffect(() => {
     if (mountedRef.current) return;

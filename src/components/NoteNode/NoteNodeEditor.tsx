@@ -5,7 +5,7 @@ import FloatingToolbar from "./FloatingToolbar";
 import { Node as PMNode } from "prosemirror-model";
 
 import type { Selection } from "prosemirror-state";
-import { useOutlineStore } from "../../store";
+import { useEditorStore } from "../../store";
 import { extendedSchema } from "../../schema/extendedSchema";
 import { toggleMark } from "prosemirror-commands";
 import type { MarkActionType } from "types/markActions";
@@ -22,7 +22,7 @@ export function NoteNodeEditor({
     selection: ProseMirrorSelectionJSON
   ) => void;
 }) {
-  const findNodeById = useOutlineStore((state) => state.findNodeById);
+  const findNodeById = useEditorStore((state) => state.findNodeById);
 
   const { editorRef, selectionCoords } = useProseMirrorEditor({
     docJSON: findNodeById(nodeId)?.content,
@@ -30,7 +30,7 @@ export function NoteNodeEditor({
   });
 
   // 格式化函数放这里或提升出去
-  const editView = useOutlineStore((state) => state.editorView);
+  const editView = useEditorStore((state) => state.editorView);
   const handleFormat = (type: MarkActionType, payload?: string) => {
     if (!editView) return;
     const view = editView;

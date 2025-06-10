@@ -1,28 +1,34 @@
 import { useEffect } from "react";
-import { NoteNode } from "../components/NoteNode/index";
-import { useOutlineStore } from "../store";
+import HeaderBar from "./HeaderBar";
+import MainContent from "./MainContent";
+import SideBar from "./SideBar";
+import "./index.scss";
+import { getActiveFile, getFileById } from "../api";
+import { useEditorStore } from "../store";
+function Layout() {
+  const { reset } = useEditorStore();
 
-function App() {
-  const tree = useOutlineStore((state) => state.tree);
-  const focusId = useOutlineStore((state) => state.focusId);
-
-  
-  
-  const initState = useOutlineStore((state) => state.initState);
-
+  async function initState() {
+    const fileMeta = await getActiveFile();
+    if (fileMeta) {
+      const fileContent = await getFileById(fileMeta.id);
+      if (fileContent) {
+        console.log(fileContent)
+        reset(fileContent);
+      }
+    }
+  }
   useEffect(() => {
-    initState()
-  })
+    initState();
+  }, []);
+
   return (
-    <div style={{ width: 600, padding: "100px 100px 0", height: 600 }}>
-      <div className="buttons">
-        <button>保存</button>
-      </div>
-      {tree.map((node) => (
-        <NoteNode key={node.id} nodeId={node.id} focuseId={focusId} />
-      ))}
+    <div className="Layout">
+      <HeaderBar />
+      <MainContent />
+      <SideBar />
     </div>
   );
 }
 
-export default App;
+export default Layout;

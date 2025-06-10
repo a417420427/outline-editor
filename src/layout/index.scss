@@ -1,0 +1,83 @@
+.Layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: sans-serif;
+  padding-left: 220px;
+  padding-top: 60px;
+}
+
+/* 顶部导航栏 */
+.HeaderBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #2c3e50;
+  color: white;
+  padding: 0.75rem 1rem;
+  height: 60px;
+  z-index: 1;
+  .HeaderBar-left {
+    .HeaderBar-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+  }
+
+  .HeaderBar-right {
+    display: flex;
+    gap: 1rem;
+
+    .HeaderBar-action {
+      cursor: pointer;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+/* 主体区域 */
+.MainContent {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 侧边栏 */
+.SideBar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  padding: 60px 1em 1em;
+  height: 100vh;
+  width: 220px;
+  background-color: #ecf0f1;
+  border-right: 1px solid #bdc3c7;
+  
+  box-sizing: border-box;
+
+  .SideBar-header {
+    margin-bottom: 1rem;
+
+    .SideBar-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+  }
+
+  .SideBar-content {
+    overflow-y: auto;
+  }
+}
+
+/* 主要内容区 */
+.MainContent {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #fdfdfd;
+}
