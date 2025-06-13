@@ -3,14 +3,15 @@ import { EditorView } from "prosemirror-view";
 import { Node } from "prosemirror-model";
 
 import { Selection } from "prosemirror-state";
+import { getFileList } from "../api";
 
 export const initialTree = [
   {
-    id: Math.random().toFixed(10),
+    id: "",
     expand: true,
     content: {
       type: "paragraph",
-      content: [{ type: "text", text: "大纲笔记功能" }],
+      content: [{ type: "text", text: "新建大纲笔记" }],
     },
     children: [],
   },
@@ -22,7 +23,9 @@ export const getInitialState: () => OutlineState = () => ({
   focusOffset: 0,
   editorView: null,
   history: [],
+  activeFile: null,
   historyIndex: 0,
+  fileList: [],
 });
 
 interface OutlineActions {
@@ -55,24 +58,32 @@ interface OutlineActions {
   /** 记录当前历史的节点内操作 */
   updateCurrentHistory: () => void;
   /** 重置数据 */
-  reset: (initialTreeOverride: Partial<OutlineState>) => void;
+  reset: (FileContent: FileContent & { activeFile: FileMeta }) => void;
+  undoTree: () => void;
+  redoTree: () => void;
+  initFileList: () => void;
+
+  updateState: (state: Partial<OutlineState>) => void;
 }
 
 export const useEditorStore = create<OutlineState & OutlineActions>(
   (set, get) => ({
     tree: [],
     focusId: "",
+    activeFile: null,
     editorView: null,
     history: [],
     focusOffset: 0,
     historyIndex: 0,
-    reset: (initialTreeOverride: Partial<OutlineState>) => {
-      const { pushHistory } = get();
-     
+    fileList: [],
+    reset: (FileContent: FileContent) => {
+      const { pushHistory , initFileList} = get();
+
       set({
         ...getInitialState(),
-        ...initialTreeOverride,
+        ...FileContent,
       });
+      initFileList()
       pushHistory();
     },
     setTree: (newTree) => {
@@ -121,7 +132,6 @@ export const useEditorStore = create<OutlineState & OutlineActions>(
     },
     updateCurrentHistory: () => {
       const { tree, focusId, focusOffset, history, historyIndex } = get();
-
       const newEntry: HistoryEntry = { tree, focusId, focusOffset };
       const newHistory = [...history];
       newHistory[historyIndex] = newEntry;
@@ -355,6 +365,17 @@ export const useEditorStore = create<OutlineState & OutlineActions>(
       const { tree } = get();
 
       return findNodeByIdFromTree(tree, id);
+    },
+    onSaveFile() {},
+    initFileList() {
+      getFileList().then((fileList) => {
+        set({
+          fileList,
+        });
+      });
+    },
+    updateState(state) {
+      set(state);
     },
   })
 );

@@ -26,12 +26,23 @@ declare global {
     focusOffset: number;
     // 以后有需要可以加更多
   }
-  interface OutlineState {
-    title?: string
+
+  interface FileMeta {
+    name: string;
+    tempFileName?: string;
+    id: string;
+  }
+  interface FileContent {
+    fileId?: string;
+    title?: string;
     tree: OutlineNode[];
     // nodeMap: Record<string, OutlineNode>;
     focusId: string;
     focusOffset: number;
+  }
+  interface OutlineState extends FileContent {
+    activeFile: FileMeta | null;
+    fileList: FileMeta[];
     editorView: EditorView | null;
     history: HistoryEntry[];
     historyIndex: number;

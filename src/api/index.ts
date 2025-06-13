@@ -5,11 +5,6 @@
 const activeFileIdKey = "activeFileIdKey";
 const fileListKey = "fileListKey";
 
-interface FileMeta {
-  name: string;
-  id: string;
-}
-
 export async function getActiveFile(): Promise<FileMeta> {
   const activeFile = localStorage.getItem(activeFileIdKey);
   const fileList = await getFileList();
@@ -33,17 +28,19 @@ export async function getFileById(id: string) {
   try {
     const json = localStorage.getItem(id);
     if (!json) return null;
-    return JSON.parse(json) as Partial<OutlineState>;
+    return JSON.parse(json) as FileContent;
   } catch (_) {
     console.log(_);
     return null;
   }
 }
 
-export async function saveFile(id: string, fileContent: Partial<OutlineState>) {
+export async function saveFile(i: string, fileContent: FileContent) {
+  const id = i || Date.now().toString();
+  // TODO 新建逻辑
   localStorage.setItem(activeFileIdKey, id);
-  localStorage.setItem(id, JSON.stringify(fileContent));
 
+  localStorage.setItem(id, JSON.stringify(fileContent));
   try {
     const fileList = await getFileList();
     const has = !!fileList.find((f) => f.id === id);
@@ -57,6 +54,10 @@ export async function saveFile(id: string, fileContent: Partial<OutlineState>) {
   } catch (_) {
     console.log(_);
   }
+  return {
+    name: fileContent.title || "新建笔记",
+    id,
+  };
 }
 
 export async function deleteFile(id: string) {
@@ -64,4 +65,8 @@ export async function deleteFile(id: string) {
   const fileList = await getFileList();
   const filtered = fileList.filter((f) => f.id !== id);
   localStorage.setItem(fileListKey, JSON.stringify(filtered));
+}
+
+export async function saveFileContent(fileContent: FileContent, id: string) {
+  localStorage.setItem(id, JSON.stringify(fileContent));
 }
