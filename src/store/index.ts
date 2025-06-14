@@ -35,6 +35,7 @@ interface OutlineActions {
   setFocusId: (id: string) => void;
   /** TAB缩进 将当前节点设为上一个兄弟节点的子节点 */
   tabNode: (nodeId: string, editorView: EditorView) => void;
+  shiftTabNode: (nodeId: string, editorView: EditorView) => void;
   /** 删除节点 */
   deleteNode: (nodeId: string) => void;
   /** 展开收起 */
@@ -77,13 +78,13 @@ export const useEditorStore = create<OutlineState & OutlineActions>(
     historyIndex: 0,
     fileList: [],
     reset: (FileContent: FileContent) => {
-      const { pushHistory , initFileList} = get();
+      const { pushHistory, initFileList } = get();
 
       set({
         ...getInitialState(),
         ...FileContent,
       });
-      initFileList()
+      initFileList();
       pushHistory();
     },
     setTree: (newTree) => {
@@ -299,6 +300,57 @@ export const useEditorStore = create<OutlineState & OutlineActions>(
       setFocusId(node.id);
       pushHistory(); // 添加到历史记录
     },
+    /**
+     * 处理大纲节点反缩进的操作，将当前节点提升为父节点的兄弟节点（Shift+Tab 触发）。
+     * @param nodeId 要移动的节点ID
+     * @param editorView 编辑器视图对象，用于获取当前选区信息
+     */
+    shiftTabNode: (nodeId: string, editorView: EditorView) => {
+      const { tree, setTree, setFocusId, pushHistory } = get();
+      const newTree = structuredClone(tree);
+
+      const result = findNodeWithParent(newTree, nodeId);
+      if (!result) return;
+
+      const { node, index, parent, siblings } = result;
+
+      if (!parent) return; // 当前节点没有父节点，已经是顶层，不能再提升
+
+      // 查找祖父节点信息
+      const grandParentResult = findNodeWithParent(newTree, parent.id);
+
+      let grandSiblings: OutlineNode[] = newTree; // 默认提升为顶层节点
+      let insertIndex = 0;
+
+      if (grandParentResult) {
+        const { siblings: gpSiblings, index: parentIndex } = grandParentResult;
+
+        if (!Array.isArray(gpSiblings)) return; // 防御性检查
+        grandSiblings = gpSiblings;
+        insertIndex = parentIndex + 1; // 插入到父节点后面
+      } else {
+        // 如果祖父节点不存在，说明父节点是顶层节点
+        const parentIndex = newTree.findIndex((n) => n.id === parent.id);
+        if (parentIndex === -1) return; // 父节点找不到，数据不一致
+        insertIndex = parentIndex + 1;
+      }
+
+      // 从当前父节点中删除该节点
+      siblings.splice(index, 1);
+
+      // 插入到祖父节点层级（或顶层）
+      grandSiblings.splice(insertIndex, 0, {
+        ...node,
+        parentId: grandParentResult?.node?.id || undefined,
+        selection: editorView.state.selection.toJSON(),
+      });
+
+      // 更新状态
+      setTree(newTree);
+      setFocusId(node.id);
+      pushHistory();
+    },
+
     onTransaction: (doc: Node, selection: Selection) => {
       const { focusId, tree, setTree, updateCurrentHistory, setFocusOffset } =
         get();

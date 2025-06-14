@@ -32,6 +32,7 @@ export function useProseMirrorEditor({
   const undoTree = useEditorStore((state) => state.undoTree);
   const redoTree = useEditorStore((state) => state.redoTree);
   const tabNode = useEditorStore((state) => state.tabNode);
+  const shiftTabNode = useEditorStore((state) => state.shiftTabNode);
   const onTransaction = useEditorStore((state) => state.onTransaction);
 
   useEffect(() => {
@@ -56,6 +57,10 @@ export function useProseMirrorEditor({
             },
             Tab: () => {
               tabNode(nodeId, viewRef.current!);
+              return true;
+            },
+            "Shift-Tab": () => {
+              shiftTabNode(nodeId, viewRef.current!);
               return true;
             },
             "Mod-z": () => {
