@@ -57,7 +57,7 @@
   width: 220px;
   background-color: #ecf0f1;
   border-right: 1px solid #bdc3c7;
-  
+
   box-sizing: border-box;
 
   .SideBar-header {
@@ -80,4 +80,51 @@
   padding: 1rem;
   overflow-y: auto;
   background-color: #fdfdfd;
+}
+
+.SideBar {
+  width: 240px;
+  height: 100vh;
+  background-color: #f9f9f9;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  font-family: sans-serif;
+
+  .SideBar-header {
+    padding: 16px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+
+    .SideBar-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+    }
+  }
+
+  .SideBar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    .active {
+      background-color: #d0ebff;
+      font-weight: bold;
+    }
+    div {
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: #ececec;
+      }
+
+      &:active {
+        background-color: #ddd;
+      }
+    }
+  }
 }

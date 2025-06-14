@@ -89,7 +89,7 @@ export default function HeaderBar() {
   return (
     <div className="HeaderBar">
       <div className="HeaderBar-left">
-        <span className="HeaderBar-title">笔记</span>
+        <span className="HeaderBar-title">大纲笔记</span>
       </div>
       <div className="HeaderBar-right">
         <span className="HeaderBar-action" onClick={onCreateFile}>
